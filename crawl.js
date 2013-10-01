@@ -27,7 +27,12 @@ function crawl(uri, cb) {
                 uri: response.request.uri.href
             }, function (err, response, body) {
                 if (err) return cb(err);
-                parseHtml(base, cheerio.load(body), result);
+                try {
+                    parseHtml(base, cheerio.load(body), result);
+                } catch (e) {
+                    result.htmlParseError = e.toString();
+                    // FIXME store error in DB somehow
+                }
                 cb(null, result);
             });
         } else {
