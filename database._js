@@ -1,6 +1,7 @@
 var fs = require('fs');
 var async = require('async');
 var sqlite3 = require('sqlite3');
+var url = require('url');
 
 var dbTables = [ {
     name: 'crawl_prefixes',
@@ -78,7 +79,7 @@ Database.prototype.refreshCrawlPrefixes = function (_) {
     });
 };
 
-Database.prototype.isUriCrawlable = function (uri) {
+Database.prototype.uriIsCrawlable = function (uri) {
     for (var i = 0; i < this.crawlPrefixes.length; ++i) {
         if (uri.indexOf(this.crawlPrefixes[i]) == 0)
             return true;
@@ -100,13 +101,17 @@ Database.prototype.getPendingUri = function (_) {
     return row.uri;
 };
 
-Database.prototype.addPending = function (uri, _) {
+Database.prototype.addPendingUri = function (uri, _) {
+    uri = url.parse(uri);
+    uri.hash = undefined;
+    uri = url.format(uri);
+    console.log('addPendingUri', uri);
     this.db.run('INSERT OR IGNORE INTO uris (uri) VALUES (?)',
-                uri);
+                uri, _);
 };
 
 Database.prototype.addResult = function (result, _) {
-    if (!this.isUriCrawlable(result.uri))
+    if (!this.uriIsCrawlable(result.uri))
         return;
     var row = this.db.get('SELECT uri, response_code FROM uris WHERE uri = ?',
                           result.uri, _);
@@ -119,7 +124,7 @@ Database.prototype.addResult = function (result, _) {
 
     var prevUri = result.originalUri;
     result.redirects.forEach_(_, function (_, redirect) {
-        if (this.isUriCrawlable(prevUri)) {
+        if (this.uriIsCrawlable(prevUri)) {
             this.db.run('INSERT OR REPLACE INTO uris ' +
                         '(uri, response_code) ' +
                         'VALUES (?, ?)',
@@ -134,6 +139,8 @@ Database.prototype.addResult = function (result, _) {
 
     result.refs.forEach_(_, function (_, ref) {
         this.addResultRef(result.uri, ref, _);
+        if (this.uriIsCrawlable(ref.uri))
+            this.addPendingUri(ref.uri, _);
     }, this);
 };
 
@@ -148,10 +155,14 @@ var crawl = require('./crawl');
 
 var db = new Database('test.db');
 db.create(_);
-db.addCrawlPrefix('https://www.lavos.net/', _);
-var result = crawl('http://www.lavos.net/', _);
-console.log(result);
-db.transaction(function (_) {
-    db.addResult(result, _);
-}, _);
-console.log('wtf?');
+db.addCrawlPrefix('http://www.stephenwolfram.com/', _);
+db.addPendingUri('http://www.stephenwolfram.com/', _);
+
+var uri;
+while ((uri = db.getPendingUri(_))) {
+    console.log('crawl', uri);
+    var result = crawl(uri, _);
+    db.transaction(function (_) {
+        db.addResult(result, _);
+    }, _);
+}
