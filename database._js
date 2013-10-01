@@ -22,12 +22,6 @@ var dbTables = [ {
         'type TEXT NOT NULL',
         'to_uri TEXT NOT NULL'
     ]
-}, {
-    name: 'redirects',
-    columns: [
-        'from_uri TEXT PRIMARY KEY',
-        'to_uri TEXT NOT NULL'
-    ]
 } ];
 
 function Database(name) {
@@ -91,7 +85,6 @@ Database.prototype.createTable = function (tableSpec, _) {
     var stmt =
         'CREATE TABLE ' + tableSpec.name +
         ' (' + tableSpec.columns.join(', ') + ')';
-    console.log(stmt);
     this.db.run(stmt, _);
 };
 
@@ -105,7 +98,6 @@ Database.prototype.addPendingUri = function (uri, _) {
     uri = url.parse(uri);
     uri.hash = undefined;
     uri = url.format(uri);
-    console.log('addPendingUri', uri);
     this.db.run('INSERT OR IGNORE INTO uris (uri) VALUES (?)',
                 uri, _);
 };
@@ -121,21 +113,6 @@ Database.prototype.addResult = function (result, _) {
                 '(uri, response_code, content_type) ' +
                 'VALUES (?, ?, ?)',
                 result.uri, result.statusCode, result.contentType, _);
-
-    var prevUri = result.originalUri;
-    result.redirects.forEach_(_, function (_, redirect) {
-        if (this.uriIsCrawlable(prevUri)) {
-            this.db.run('INSERT OR REPLACE INTO uris ' +
-                        '(uri, response_code) ' +
-                        'VALUES (?, ?)',
-                        prevUri, redirect.statusCode, _);
-            this.db.run('INSERT OR REPLACE INTO redirects ' +
-                        '(from_uri, to_uri) ' +
-                        'VALUES (?, ?)',
-                        prevUri, result.uri, _);
-        }
-        prevUri = redirect.redirectUri;
-    }, this);
 
     result.refs.forEach_(_, function (_, ref) {
         this.addResultRef(result.uri, ref, _);
@@ -153,10 +130,12 @@ Database.prototype.addResultRef = function (uri, ref, _) {
 
 var crawl = require('./crawl');
 
+var start = 'http://www.stephenwolfram.com/';
+
 var db = new Database('test.db');
 db.create(_);
 db.addCrawlPrefix('http://www.stephenwolfram.com/', _);
-db.addPendingUri('http://www.stephenwolfram.com/', _);
+db.addPendingUri(start, _);
 
 var uri;
 while ((uri = db.getPendingUri(_))) {
@@ -165,4 +144,7 @@ while ((uri = db.getPendingUri(_))) {
     db.transaction(function (_) {
         db.addResult(result, _);
     }, _);
+    var total = db.db.get('SELECT COUNT(*) as c FROM uris', _).c;
+    var pending = db.db.get('SELECT COUNT(*) as c FROM uris WHERE response_code IS NULL', _).c;
+    console.log('progress', 'total', total, 'pending', pending);
 }
