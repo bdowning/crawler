@@ -53,7 +53,9 @@ function crawl(uri, cb) {
     });
 }
 
-crawl('http://www.stephenwolfram.com/', function (err, result) {
-    console.log(err);
-    console.log(result);
-});
+// crawl('http://www.stephenwolfram.com/', function (err, result) {
+//     console.log(err);
+//     console.log(result);
+// });
+
+module.exports = crawl;
