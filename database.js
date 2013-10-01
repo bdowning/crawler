@@ -3,21 +3,17 @@ var async = require('async');
 var sqlite3 = require('sqlite3');
 
 var dbTables = [ {
-    name: 'pending',
-    columns: [
-        'uri TEXT PRIMARY KEY'
-    ]
-}, {
-    name: 'results',
+    name: 'uris',
     columns: [
         'uri TEXT PRIMARY KEY',
-        'response_code INTEGER NOT NULL'
+        'response_code INTEGER',
+        'content_type TEXT'
     ]
 }, {
     name: 'refs',
     columns: [
         'from_uri TEXT NOT NULL',
-        'reference_type TEXT NOT NULL',
+        'type TEXT NOT NULL',
         'to_uri TEXT NOT NULL'
     ]
 }, {
@@ -75,7 +71,17 @@ Database.prototype.createTable = function (tableSpec, cb) {
         ' (' + tableSpec.columns.join(', ') + ')';
     console.log(stmt);
     this.db.run(stmt, cb);
-}
+};
+
+Database.prototype.getPendingUri = function (cb) {
+    this.db.get('SELECT uri FROM uris WHERE response_code IS NULL LIMIT 1',
+                function (err, row) {
+                    if (err) cb(err) else cb(null, row.uri);
+                });
+};
+
+Database.prototype.addResult = function (result, cb) {
+};
 
 var db = new Database('test.db');
 db.create(function (err) { console.log('done', err); });
