@@ -91,7 +91,7 @@ Database.prototype.createTable = function (tableSpec, _) {
 Database.prototype.getPendingUri = function (_) {
     var row = this.db.get(
         'SELECT uri FROM uris WHERE response_code IS NULL LIMIT 1', _);
-    return row.uri;
+    return row && row.uri;
 };
 
 Database.prototype.addPendingUri = function (uri, _) {
