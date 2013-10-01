@@ -1,3 +1,4 @@
+var fs = require('fs');
 var async = require('async');
 var sqlite3 = require('sqlite3');
 
@@ -52,8 +53,13 @@ Database.prototype.transaction = function (body, cb) {
 Database.prototype.create = function (cb) {
     this.waterfall([
         function (cb) {
-            this.db = new sqlite3.Database(
-                this.name, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, cb);
+            if (fs.existsSync(this.name))
+                cb(new Error('Database already exists'));
+            else
+                this.db = new sqlite3.Database(
+                    this.name,
+                    sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
+                    cb);
         },
         function (cb) {
             this.transaction(function (cb) {
