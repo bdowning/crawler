@@ -103,8 +103,6 @@ Database.prototype.addPendingUri = function (uri, _) {
 };
 
 Database.prototype.addResult = function (result, _) {
-    if (!this.uriIsCrawlable(result.uri))
-        return;
     var row = this.db.get('SELECT uri, response_code FROM uris WHERE uri = ?',
                           result.uri, _);
     if (row && row.response_code)
@@ -114,11 +112,12 @@ Database.prototype.addResult = function (result, _) {
                 'VALUES (?, ?, ?)',
                 result.uri, result.statusCode, result.contentType, _);
 
-    result.refs.forEach_(_, function (_, ref) {
-        this.addResultRef(result.uri, ref, _);
-        if (this.uriIsCrawlable(ref.uri))
+    if (this.uriIsCrawlable(result.uri)) {
+        result.refs.forEach_(_, function (_, ref) {
+            this.addResultRef(result.uri, ref, _);
             this.addPendingUri(ref.uri, _);
-    }, this);
+        }, this);
+    }
 };
 
 Database.prototype.addResultRef = function (uri, ref, _) {
@@ -140,7 +139,7 @@ db.addPendingUri(start, _);
 var uri;
 while ((uri = db.getPendingUri(_))) {
     console.log('crawl', uri);
-    var result = crawl(uri, _);
+    var result = crawl(uri, !db.uriIsCrawlable(uri), _);
     db.transaction(function (_) {
         db.addResult(result, _);
     }, _);

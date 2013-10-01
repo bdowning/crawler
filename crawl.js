@@ -2,7 +2,7 @@ var cheerio = require('cheerio');
 var request = require('request');
 var url = require('url');
 
-function crawl(uri, cb) {
+function crawl(uri, linkCheckOnly, cb) {
     request.head({
         uri: uri,
         followRedirect: false
@@ -22,7 +22,8 @@ function crawl(uri, cb) {
                 uri: url.resolve(base, response.headers['location'])
             });
             cb(null, result);
-        } else if (response.statusCode == 200 && result.contentType == 'text/html') {
+        } else if (response.statusCode == 200 && result.contentType == 'text/html' &&
+                   !linkCheckOnly) {
             request.get({
                 uri: response.request.uri.href
             }, function (err, response, body) {
