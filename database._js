@@ -141,7 +141,16 @@ db.addPendingUri(start, _);
 var uri;
 while ((uri = db.getPendingUri(_))) {
     console.log('crawl', uri);
-    var result = crawl(uri, !db.uriIsCrawlable(uri), _);
+    var result;
+    try {
+        result = crawl(uri, !db.uriIsCrawlable(uri), _);
+    } catch (e) {
+        result = {
+            uri: uri,
+            statusCode: 900,
+            contentType: 'network-error'
+        };
+    }
     db.transaction(function (_) {
         db.addResult(result, _);
     }, _);
