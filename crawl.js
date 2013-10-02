@@ -22,7 +22,8 @@ function crawl(uri, linkCheckOnly, cb) {
                 uri: url.resolve(base, response.headers['location'])
             });
             cb(null, result);
-        } else if (response.statusCode == 200 && result.contentType == 'text/html' &&
+        } else if (response.statusCode == 200 &&
+                   result.contentType.indexOf('text/html') == 0 &&
                    !linkCheckOnly) {
             request.get({
                 uri: response.request.uri.href
