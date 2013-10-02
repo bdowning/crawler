@@ -97,6 +97,8 @@ Database.prototype.getPendingUri = function (_) {
 Database.prototype.addPendingUri = function (uri, _) {
     uri = url.parse(uri);
     uri.hash = undefined;
+    if (uri.protocol != 'http:' && uri.protocol != 'https:')
+        return;
     uri = url.format(uri);
     this.db.run('INSERT OR IGNORE INTO uris (uri) VALUES (?)',
                 uri, _);
